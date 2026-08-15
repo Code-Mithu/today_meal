@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Today Meal Offline",
+    "slug": "today-meal-offline",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F8FAF8"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F8FAF8"
+      },
+      "package": "com.todaymeal.app",
+      "versionCode": 2,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
+    },
+    "plugins": [
+      "expo-local-authentication",
+      ["expo-image-picker", { "photosPermission": "Today Meal can attach receipt images stored on your device." }]
+    ]
+  }
+}

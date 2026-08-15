@@ -1,0 +1,126 @@
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import { Expense, Contribution, DailyMeal, MealGroup } from '@/types';
+import { formatCurrency, formatDate } from '@/utils/formatters';
+import { sumExpenses, sumContributions, sumMeals, calculateMealRate } from '@/utils/calculations';
+
+/**
+ * PDFExport — generates an A4-compatible PDF report using expo-print.
+ * Uses native print/share functionality. Includes group name, period, summary,
+ * financial data, member data, meals, expenses, and contributions.
+ */
+export async function generateExpenseReportPDF(params: {
+  group: MealGroup;
+  expenses: Expense[];
+  contributions: Contribution[];
+  meals: DailyMeal[];
+  startDate: string;
+  endDate: string;
+  currency: string;
+}): Promise<void> {
+  const { group, expenses, contributions, meals, startDate, endDate, currency } = params;
+
+  const totalExpenses = sumExpenses(expenses);
+  const totalContributions = sumContributions(contributions);
+  const totalMeals = sumMeals(meals);
+  const mealRate = calculateMealRate(totalExpenses, totalMeals);
+  const balance = totalContributions - totalExpenses;
+
+  const html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #25332C; margin: 0; padding: 20px; }
+      h1 { color: #4F9D8A; font-size: 24px; margin-bottom: 4px; }
+      h2 { color: #4F9D8A; font-size: 18px; margin-top: 24px; margin-bottom: 8px; }
+      .header { border-bottom: 2px solid #4F9D8A; padding-bottom: 12px; margin-bottom: 20px; }
+      .period { color: #718078; font-size: 14px; }
+      .summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+      .card { background: #F8FAF8; border: 1px solid #DDE7E1; border-radius: 8px; padding: 12px 16px; flex: 1; min-width: 140px; }
+      .card-label { font-size: 12px; color: #718078; text-transform: uppercase; }
+      .card-value { font-size: 20px; font-weight: 700; color: #25332C; margin-top: 4px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+      th { background: #4F9D8A; color: white; padding: 8px; text-align: left; font-size: 13px; }
+      td { border: 1px solid #DDE7E1; padding: 6px 8px; font-size: 13px; }
+      tr:nth-child(even) { background: #F8FAF8; }
+      .text-right { text-align: right; }
+      .footer { margin-top: 30px; text-align: center; color: #718078; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>${group.name}</h1>
+      <div class="period">${formatDate(startDate)} — ${formatDate(endDate)}</div>
+    </div>
+
+    <div class="summary">
+      <div class="card">
+        <div class="card-label">Total Expenses</div>
+        <div class="card-value">${formatCurrency(totalExpenses, currency)}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Contributions</div>
+        <div class="card-value">${formatCurrency(totalContributions, currency)}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Meals</div>
+        <div class="card-value">${totalMeals}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Meal Rate</div>
+        <div class="card-value">${formatCurrency(mealRate, currency)}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Balance</div>
+        <div class="card-value" style="color: ${balance >= 0 ? '#4F9D8A' : '#E25C5C'}">${formatCurrency(balance, currency)}</div>
+      </div>
+    </div>
+
+    <h2>Expenses</h2>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Spent By</th><th>Meals</th><th class="text-right">Food</th><th class="text-right">Other</th><th class="text-right">Total</th></tr>
+      </thead>
+      <tbody>
+        ${expenses.map((e) => `
+          <tr>
+            <td>${formatDate(e.date, 'MMM d')}</td>
+            <td>${e.spent_by || e.created_by_name || '-'}</td>
+            <td>${e.number_of_meals}</td>
+            <td class="text-right">${formatCurrency(e.food_expense_amount, currency)}</td>
+            <td class="text-right">${formatCurrency(e.other_expense_amount, currency)}</td>
+            <td class="text-right">${formatCurrency(e.total_daily_expense, currency)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+
+    <h2>Contributions</h2>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Member</th><th>Method</th><th class="text-right">Amount</th></tr>
+      </thead>
+      <tbody>
+        ${contributions.map((c) => `
+          <tr>
+            <td>${formatDate(c.date, 'MMM d')}</td>
+            <td>${c.member_name}</td>
+            <td>${c.payment_method}</td>
+            <td class="text-right">${formatCurrency(c.amount, currency)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+
+    <div class="footer">Generated by Today Meal — ${formatDate(new Date())}</div>
+  </body>
+  </html>
+  `;
+
+  const { uri } = await Print.printToFileAsync({ html });
+  await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `${group.name} Report` });
+}

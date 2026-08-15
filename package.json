@@ -1,38 +1,42 @@
 {
-  "name": "my-project",
-  "version": "0.1.0",
+  "name": "today-meal-offline",
+  "version": "2.0.0",
   "private": true,
+  "main": "node_modules/expo/AppEntry.js",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint ."
+    "start": "expo start",
+    "android": "expo start --android",
+    "typecheck": "tsc --noEmit",
+    "doctor": "expo-doctor",
+    "build:apk": "eas build --platform android --profile preview",
+    "build:apk:local": "eas build --local --platform android --profile preview"
   },
   "dependencies": {
-    "@base-ui/react": "^1.5.0",
-    "@vercel/analytics": "1.6.1",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.16.0",
-    "next": "16.3.0",
-    "react": "^19",
-    "react-dom": "^19",
-    "shadcn": "^4.8.0",
-    "tailwind-merge": "^3.3.1",
-    "tw-animate-css": "^1.4.0"
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-navigation/bottom-tabs": "^7.9.0",
+    "@react-navigation/native": "^7.1.28",
+    "@react-navigation/native-stack": "^7.10.1",
+    "expo": "^57.0.0",
+    "expo-file-system": "^57.0.0",
+    "expo-local-authentication": "^57.0.0",
+    "expo-print": "^57.0.0",
+    "expo-sharing": "^57.0.0",
+    "expo-sqlite": "^57.0.0",
+    "expo-status-bar": "^57.0.0",
+    "react": "19.2.0",
+    "react-native": "0.83.1",
+    "react-native-gesture-handler": "^2.30.0",
+    "react-native-reanimated": "^4.2.0",
+    "react-native-safe-area-context": "^5.6.2",
+    "react-native-screens": "^4.19.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^24",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "postcss": "^8.5",
-    "tailwindcss": "^4.3.3",
-    "typescript": "5.7.3"
-  },
-  "pnpm": {
-    "overrides": {
-      "hono": "4.12.25"
-    }
+    "@babel/core": "^7.28.0",
+    "@types/react": "^19.2.0",
+    "babel-plugin-module-resolver": "^5.0.2",
+    "babel-preset-expo": "^57.0.0",
+    "eas-cli": "^16.28.0",
+    "expo-doctor": "^1.17.11",
+    "typescript": "^5.9.0"
   }
 }
