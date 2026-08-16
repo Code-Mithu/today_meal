@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#F8FAF8"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -20,6 +22,14 @@
       "package": "com.todaymeal.app",
       "versionCode": 2
     },
-    "plugins": ["expo-sqlite"]
+    "plugins": [
+      "expo-sqlite"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "cae463d9-ea00-46fb-b600-8e300f329f5c"
+      }
+    },
+    "owner": "mtdk_mitthu"
   }
 }
