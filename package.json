@@ -10,8 +10,8 @@
     "server:check": "python server/manage.py check",
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
-    "build:apk": "eas build --platform android --profile preview",
-    "build:apk:local": "eas build --local --platform android --profile preview"
+    "build:apk": "npx --yes eas-cli@latest build --platform android --profile preview",
+    "build:apk:local": "npx --yes eas-cli@latest build --local --platform android --profile preview"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -38,11 +38,10 @@
     "@types/react": "^19.2.0",
     "babel-plugin-module-resolver": "^5.0.2",
     "babel-preset-expo": "^57.0.0",
-    "eas-cli": "^16.28.0",
     "expo-doctor": "^1.17.11",
     "typescript": "^6.0.3"
   },
   "pnpm": {
-    "ignoredBuiltDependencies": ["dtrace-provider"]
+    "onlyBuiltDependencies": []
   }
 }
