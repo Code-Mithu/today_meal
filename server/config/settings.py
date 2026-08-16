@@ -1,11 +1,23 @@
 from datetime import timedelta
 import os
 from pathlib import Path
+from urllib.parse import parse_qsl, urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "development-only-change-me-use-a-random-production-secret-over-50-characters")
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
-ALLOWED_HOSTS = [v.strip() for v in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if v.strip()]
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if not DEBUG:
+        raise RuntimeError("DJANGO_SECRET_KEY must be configured in production.")
+    SECRET_KEY = "development-only-change-me"
+
+ALLOWED_HOSTS = [
+    value.strip()
+    for value in os.environ.get(
+        "DJANGO_ALLOWED_HOSTS", ".vercel.app,localhost,127.0.0.1"
+    ).split(",")
+    if value.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions",
@@ -22,10 +34,30 @@ MIDDLEWARE = [
 ROOT_URLCONF = "config.urls"
 TEMPLATES = [{"BACKEND": "django.template.backends.django.DjangoTemplates", "DIRS": [], "APP_DIRS": True, "OPTIONS": {"context_processors": ["django.template.context_processors.request", "django.contrib.auth.context_processors.auth", "django.contrib.messages.context_processors.messages"]}}]
 WSGI_APPLICATION = "config.wsgi.application"
-if sqlite_path := os.environ.get("SQLITE_PATH"):
+
+def postgres_config(database_url: str):
+    parsed = urlparse(database_url)
+    query = dict(parse_qsl(parsed.query))
+    options = {"sslmode": query.get("sslmode", "require")}
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": parsed.path.lstrip("/"),
+        "USER": parsed.username,
+        "PASSWORD": parsed.password,
+        "HOST": parsed.hostname,
+        "PORT": parsed.port or 5432,
+        "OPTIONS": options,
+        "CONN_MAX_AGE": 0,
+    }
+
+if database_url := os.environ.get("DATABASE_URL"):
+    DATABASES = {"default": postgres_config(database_url)}
+elif sqlite_path := os.environ.get("SQLITE_PATH"):
     DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": sqlite_path}}
+elif DEBUG:
+    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}}
 else:
-    DATABASES = {"default": {"ENGINE": "django.db.backends.postgresql", "NAME": os.environ.get("POSTGRES_DB", "todaymeal"), "USER": os.environ.get("POSTGRES_USER", "todaymeal"), "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "todaymeal"), "HOST": os.environ.get("POSTGRES_HOST", "db"), "PORT": os.environ.get("POSTGRES_PORT", "5432")}}
+    raise RuntimeError("DATABASE_URL must be configured in production.")
 AUTH_PASSWORD_VALIDATORS = [{"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"}, {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"}]
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"

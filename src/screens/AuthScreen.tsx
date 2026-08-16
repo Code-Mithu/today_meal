@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
+import { ApiError } from '@/services/api';
 import { COLORS } from '@/utils/constants';
 
 export default function AuthScreen() {
@@ -19,8 +20,15 @@ export default function AuthScreen() {
     try {
       if (mode === 'sign-up') await signUp(name.trim(), email.trim().toLowerCase(), password);
       else await signIn(email.trim().toLowerCase(), password);
-    } catch { setError('Unable to continue. Check your details and connection.'); }
-    finally { setBusy(false); }
+    } catch (caught) {
+      if (caught instanceof ApiError) {
+        if (caught.status === 401) setError('The email or password is incorrect.');
+        else if (caught.status === 409) setError('An account with this email already exists.');
+        else setError(caught.message);
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
+    } finally { setBusy(false); }
   }
 
   return <SafeAreaView style={styles.safe}><KeyboardAvoidingView style={styles.page} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
