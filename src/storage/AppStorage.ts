@@ -75,7 +75,6 @@ export const STORAGE_KEYS = {
   ACTIVE_GROUP_ID: 'active_group_id',
   USER_DATA: 'user_data',
   LAST_SYNC_TIME: 'last_sync_time',
-  BIOMETRIC_ENABLED: 'biometric_enabled',
   PUSH_TOKEN: 'push_token',
   GUEST_TOKENS: 'guest_tokens', // array of GuestTokenEntry (non-sensitive metadata)
   ONBOARDING_COMPLETE: 'onboarding_complete',

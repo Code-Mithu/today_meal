@@ -6,49 +6,40 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
-    "server": "tsx server/index.ts",
-    "server:check": "tsc -p server/tsconfig.json --noEmit",
+    "server": "python server/manage.py runserver 0.0.0.0:8000",
+    "server:check": "python server/manage.py check",
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "build:apk": "eas build --platform android --profile preview",
     "build:apk:local": "eas build --local --platform android --profile preview"
   },
   "dependencies": {
-    "@fastify/cors": "^11.3.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "^12.0.1",
     "@react-navigation/bottom-tabs": "^7.9.0",
     "@react-navigation/native": "^7.1.28",
     "@react-navigation/native-stack": "^7.10.1",
-    "better-auth": "^1.6.29",
-    "drizzle-orm": "^0.45.2",
     "expo": "^57.0.0",
     "expo-file-system": "^57.0.0",
-    "expo-local-authentication": "^57.0.0",
     "expo-print": "^57.0.0",
     "expo-secure-store": "^57.0.1",
     "expo-sharing": "^57.0.0",
     "expo-sqlite": "^57.0.0",
     "expo-status-bar": "^57.0.0",
-    "fastify": "^5.12.0",
-    "pg": "^8.23.0",
     "react": "19.2.3",
     "react-native": "0.86.2",
     "react-native-gesture-handler": "^2.30.0",
     "react-native-reanimated": "^4.5.1",
     "react-native-safe-area-context": "^5.7.0",
-    "react-native-screens": "^4.26.2",
-    "zod": "^4.4.3"
+    "react-native-screens": "^4.26.2"
   },
   "devDependencies": {
     "@babel/core": "^7.28.0",
-    "@types/pg": "^8.21.0",
     "@types/react": "^19.2.0",
     "babel-plugin-module-resolver": "^5.0.2",
     "babel-preset-expo": "^57.0.0",
     "eas-cli": "^16.28.0",
     "expo-doctor": "^1.17.11",
-    "tsx": "^4.23.12",
     "typescript": "^6.0.3"
   }
 }

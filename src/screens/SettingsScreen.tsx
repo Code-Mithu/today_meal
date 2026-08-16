@@ -1,14 +1,12 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Switch } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGroup } from '@/context/GroupContext';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { SyncStatusBar } from '@/components/common/SyncStatusBar';
 import { COLORS } from '@/utils/constants';
-import { AppStorage, STORAGE_KEYS } from '@/storage/AppStorage';
 import { seedOfflineData } from '@/database/seed';
-import * as LocalAuthentication from 'expo-local-authentication';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '@/navigation/types';
@@ -17,15 +15,12 @@ type Nav = NativeStackNavigationProp<MainStackParamList>;
 
 export default function SettingsScreen() {
   const { activeGroup, activeMember, refreshGroups } = useGroup(); const { user, isOfflineSession, signOut } = useAuth(); const { isAdmin, canManage } = usePermissions(); const navigation = useNavigation<Nav>();
-  const [biometricEnabled, setBiometricEnabled] = React.useState(false);
-  React.useEffect(() => { AppStorage.getItem(STORAGE_KEYS.BIOMETRIC_ENABLED).then((value) => setBiometricEnabled(value === 'true')); }, []);
-  async function toggleBiometric(value: boolean) { if (value) { const compatible = await LocalAuthentication.hasHardwareAsync(); const enrolled = await LocalAuthentication.isEnrolledAsync(); if (!compatible || !enrolled) { Alert.alert('Biometric lock', 'Set up fingerprint or face authentication on this device first.'); return; } } setBiometricEnabled(value); await AppStorage.setItem(STORAGE_KEYS.BIOMETRIC_ENABLED, String(value)); }
   function resetSamples() { Alert.alert('Restore sample data', 'This adds the built-in offline sample records again. Existing records are preserved.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Restore', onPress: async () => { await seedOfflineData(true); await refreshGroups(); Alert.alert('Ready', 'Sample records restored.'); } }]); }
   return <SafeAreaView style={styles.container}><SyncStatusBar /><ScrollView contentContainerStyle={styles.content}><Text style={styles.title}>Settings</Text><Text style={styles.subtitle}>{activeGroup?.name}</Text>
     <View style={styles.section}><Text style={styles.sectionTitle}>ACCOUNT</Text><View style={styles.profileInfo}><View style={styles.avatar}><Text style={styles.avatarText}>{(user?.name || 'O').charAt(0)}</Text></View><View><Text style={styles.profileName}>{user?.name || activeMember?.member_name || 'Household Owner'}</Text><Text style={styles.profileEmail}>{user?.email}{isOfflineSession ? ' · offline session' : ' · connected'}</Text></View></View><SettingItem label="Sign out" onPress={() => void signOut()} /></View>
     <View style={styles.section}><Text style={styles.sectionTitle}>HOUSEHOLD</Text>{isAdmin() && <SettingItem label="Household settings" onPress={() => navigation.navigate('GroupSettings')} />}{canManage('member') && <SettingItem label="Members" onPress={() => navigation.navigate('Members')} />}{canManage('category') && <SettingItem label="Categories" onPress={() => navigation.navigate('Categories')} />}{canManage('vendor') && <SettingItem label="Vendors" onPress={() => navigation.navigate('Vendors')} />}<SettingItem label="Audit history" onPress={() => navigation.navigate('AuditLog')} /></View>
     <View style={styles.section}><Text style={styles.sectionTitle}>DATA</Text><SettingItem label="Restore sample data" onPress={resetSamples} /><View style={styles.infoBox}><Text style={styles.infoTitle}>Offline-first sync</Text><Text style={styles.infoText}>Changes are saved on this device immediately, then synchronized securely with your household when you are online.</Text></View></View>
-    <View style={styles.section}><Text style={styles.sectionTitle}>SECURITY</Text><View style={styles.settingItem}><Text style={styles.settingLabel}>Biometric lock preference</Text><Switch value={biometricEnabled} onValueChange={toggleBiometric} trackColor={{ true: COLORS.PRIMARY_DARK, false: COLORS.BORDER }} /></View></View>
+    <View style={styles.section}><Text style={styles.sectionTitle}>OFFLINE ACCESS</Text><View style={styles.infoBox}><Text style={styles.infoTitle}>No local lock</Text><Text style={styles.infoText}>After your first sign in, this device can open your saved household data without contacting the server.</Text></View></View>
     <Text style={styles.version}>Today Meal Offline · v2.0.0</Text></ScrollView></SafeAreaView>;
 }
 function SettingItem({ label, onPress }: { label: string; onPress: () => void }) { return <TouchableOpacity style={styles.settingItem} onPress={onPress}><Text style={styles.settingLabel}>{label}</Text><Text style={styles.chevron}>›</Text></TouchableOpacity>; }

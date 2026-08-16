@@ -1,9 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { getSyncSnapshot, synchronize } from '@/services/sync';
 import { useGroup } from './GroupContext';
 
-type SyncState = 'offline' | 'idle' | 'syncing' | 'error' | 'conflict';
+type SyncState = 'offline' | 'idle' | 'syncing' | 'error';
 type SyncContextValue = { state: SyncState; pending: number; lastSyncAt: string | null; syncNow(): Promise<void> };
 const SyncContext = createContext<SyncContextValue | null>(null);
 
@@ -22,18 +23,21 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const result = await synchronize(activeGroupId, activeGroup.name);
       const snapshot = await getSyncSnapshot();
       setPending(snapshot.pending); setLastSyncAt(snapshot.lastSyncAt);
-      setState(result.conflicts ? 'conflict' : 'idle');
+      setState('idle');
       await refreshGroups();
     } catch { setState('error'); }
   }, [activeGroup, activeGroupId, refreshGroups]);
 
   useEffect(() => {
     void getSyncSnapshot().then((snapshot) => { setPending(snapshot.pending); setLastSyncAt(snapshot.lastSyncAt); });
-    const unsubscribe = NetInfo.addEventListener((network) => {
+    const unsubscribeNetwork = NetInfo.addEventListener((network) => {
       if (!network.isConnected) setState('offline');
       else void syncNow();
     });
-    return unsubscribe;
+    const appState = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') void syncNow();
+    });
+    return () => { unsubscribeNetwork(); appState.remove(); };
   }, [syncNow]);
 
   const value = useMemo(() => ({ state, pending, lastSyncAt, syncNow }), [state, pending, lastSyncAt, syncNow]);

@@ -8,13 +8,12 @@ const labels = {
   idle: 'Synced · available on your devices',
   syncing: 'Syncing household changes…',
   error: 'Sync paused · tap to retry',
-  conflict: 'Review needed · tap to retry',
 } as const;
 
 export function SyncStatusBar() {
   const { state, pending, syncNow } = useSync();
   return <Pressable onPress={syncNow} accessibilityRole="button" accessibilityLabel={`${labels[state]}. ${pending} changes pending.`}>
-    <View style={[styles.bar, state === 'error' || state === 'conflict' ? styles.warning : undefined]}>
+    <View style={[styles.bar, state === 'error' ? styles.warning : undefined]}>
       <View style={[styles.dot, state === 'offline' ? styles.offline : undefined]} />
       <Text style={styles.text}>{labels[state]}{pending ? ` · ${pending} pending` : ''}</Text>
     </View>
