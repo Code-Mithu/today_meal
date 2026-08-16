@@ -5,3 +5,5 @@ web-build/
 *.tsbuildinfo
 .env
 .DS_Store
+.vercel
+.env*
