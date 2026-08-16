@@ -18,6 +18,9 @@ ALLOWED_HOSTS = [
     ).split(",")
     if value.strip()
 ]
+for vercel_host_variable in ("VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
+    if vercel_host := os.environ.get(vercel_host_variable):
+        ALLOWED_HOSTS.append(vercel_host.removeprefix("https://").split("/")[0])
 
 INSTALLED_APPS = [
     "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions",
@@ -38,7 +41,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 def postgres_config(database_url: str):
     parsed = urlparse(database_url)
     query = dict(parse_qsl(parsed.query))
-    options = {"sslmode": query.get("sslmode", "require")}
+    options = {
+        key: value
+        for key, value in query.items()
+        if key in {"sslmode", "channel_binding", "connect_timeout"}
+    }
+    options.setdefault("sslmode", "require")
     return {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": parsed.path.lstrip("/"),
@@ -69,11 +77,16 @@ STORAGES = {"staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestSta
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOWED_ORIGINS = [v.strip() for v in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if v.strip()]
 CORS_ALLOW_ALL_ORIGINS = DEBUG and not CORS_ALLOWED_ORIGINS
+CSRF_TRUSTED_ORIGINS = [v.strip() for v in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if v.strip()]
+for vercel_host_variable in ("VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
+    if vercel_host := os.environ.get(vercel_host_variable):
+        CSRF_TRUSTED_ORIGINS.append(f"https://{vercel_host.removeprefix('https://').split('/')[0]}")
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
-SECURE_SSL_REDIRECT = not DEBUG
+SECURE_SSL_REDIRECT = not DEBUG and not bool(os.environ.get("VERCEL"))
 X_FRAME_OPTIONS = "DENY"
 REST_FRAMEWORK = {"DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"], "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"]}
 SIMPLE_JWT = {"ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.environ.get("JWT_ACCESS_MINUTES", "15"))), "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.environ.get("JWT_REFRESH_DAYS", "30"))), "ROTATE_REFRESH_TOKENS": True, "BLACKLIST_AFTER_ROTATION": True}

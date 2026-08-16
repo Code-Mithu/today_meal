@@ -46,6 +46,43 @@ class SyncApiTests(APITestCase):
         self.assertEqual(refresh.status_code, 200)
         self.assertIn("access", refresh.data)
 
+    def test_signup_validation_duplicate_login_and_protected_me(self):
+        invalid = self.client.post(
+            reverse("signup"),
+            {"name": "", "email": "invalid@example.com", "password": "short"},
+            format="json",
+        )
+        self.assertEqual(invalid.status_code, 400)
+        self.assertIn("message", invalid.data)
+
+        signup = self.signup()
+        me = self.client.get(reverse("me"))
+        self.assertEqual(me.status_code, 200)
+        self.assertEqual(me.data["user"]["email"], "owner@example.com")
+
+        self.client.credentials()
+        duplicate = self.client.post(
+            reverse("signup"),
+            {"name": "Owner", "email": "OWNER@example.com", "password": "correct-horse"},
+            format="json",
+        )
+        self.assertEqual(duplicate.status_code, 409)
+
+        bad_login = self.client.post(
+            reverse("login"),
+            {"email": "owner@example.com", "password": "wrong-password"},
+            format="json",
+        )
+        self.assertEqual(bad_login.status_code, 401)
+
+        protected = self.client.get(reverse("me"))
+        self.assertEqual(protected.status_code, 401)
+        self.assertIn("access", signup)
+
+    def test_refresh_rejects_invalid_token(self):
+        response = self.client.post(reverse("token-refresh"), {"refresh": "not-a-token"}, format="json")
+        self.assertEqual(response.status_code, 401)
+
     def test_sync_is_idempotent_audited_and_pullable(self):
         self.signup()
         household = self.household()

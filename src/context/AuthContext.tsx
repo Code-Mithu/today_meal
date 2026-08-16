@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { apiFetch, clearTokens, saveTokens } from '@/services/api';
+import { ApiError, apiFetch, clearTokens, saveTokens } from '@/services/api';
 
 type User = { id: string; name: string; email: string };
 type AuthContextValue = {
@@ -14,6 +14,18 @@ type AuthResponse = { user: User; access: string; refresh: string };
 const USER_KEY = 'today-meal.cached-user';
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function parseCachedUser(value: string | null): User | null {
+  if (!value) return null;
+  try {
+    const candidate = JSON.parse(value) as Partial<User>;
+    return typeof candidate.id === 'string' && typeof candidate.name === 'string' && typeof candidate.email === 'string'
+      ? candidate as User
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,19 +33,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void (async () => {
-      const cached = await SecureStore.getItemAsync(USER_KEY);
-      if (cached) { setUser(JSON.parse(cached)); setOfflineSession(true); }
+      const storedUser = await SecureStore.getItemAsync(USER_KEY);
+      const cachedUser = parseCachedUser(storedUser);
+      if (storedUser && !cachedUser) await SecureStore.deleteItemAsync(USER_KEY);
+
       try {
         const result = await apiFetch<{ user: User }>('/api/auth/me');
-        setUser(result.user); setOfflineSession(false);
+        setUser(result.user);
+        setOfflineSession(false);
         await SecureStore.setItemAsync(USER_KEY, JSON.stringify(result.user));
-      } catch { setOfflineSession(Boolean(cached)); }
-      finally { setIsLoading(false); }
+      } catch (error) {
+        const canUseOfflineSession = error instanceof ApiError
+          && (error.kind === 'network' || error.kind === 'timeout')
+          && Boolean(cachedUser);
+        if (canUseOfflineSession) {
+          setUser(cachedUser);
+          setOfflineSession(true);
+        } else {
+          await clearTokens();
+          await SecureStore.deleteItemAsync(USER_KEY);
+          setUser(null);
+          setOfflineSession(false);
+        }
+      } finally {
+        setIsLoading(false);
+      }
     })();
   }, []);
 
   async function authenticate(path: string, body: object) {
-    const result = await apiFetch<AuthResponse>(path, { method: 'POST', body: JSON.stringify(body) });
+    const result = await apiFetch<AuthResponse>(path, { method: 'POST', body: JSON.stringify(body) }, false);
     await saveTokens(result.access, result.refresh);
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(result.user));
     setUser(result.user); setOfflineSession(false);

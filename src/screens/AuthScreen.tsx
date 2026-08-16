@@ -24,6 +24,10 @@ export default function AuthScreen() {
       if (caught instanceof ApiError) {
         if (caught.status === 401) setError('The email or password is incorrect.');
         else if (caught.status === 409) setError('An account with this email already exists.');
+        else if (caught.kind === 'configuration') setError('This app build is not connected to its server. Please update the app.');
+        else if (caught.kind === 'network') setError('Unable to reach the server. Check your connection and try again.');
+        else if (caught.kind === 'timeout') setError('The server is taking too long to respond. Please try again.');
+        else if (caught.kind === 'server') setError('The server is temporarily unavailable. Please try again shortly.');
         else setError(caught.message);
       } else {
         setError('Something went wrong. Please try again.');
