@@ -2,6 +2,8 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { GroupRepository } from '@/database/repositories/GroupRepository';
 import { MemberRepository } from '@/database/repositories/MemberRepository';
 import { seedOfflineData, LOCAL_GROUP_ID, LOCAL_MEMBER_ID } from '@/database/seed';
+import { execute } from '@/database/db';
+import { useAuth } from './AuthContext';
 import type { MealGroup, MealGroupMember, PermissionContext } from '@/types';
 
 interface GroupContextType {
@@ -19,6 +21,7 @@ interface GroupContextType {
 const GroupContext = createContext<GroupContextType | null>(null);
 
 export function GroupProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [groups, setGroups] = useState<MealGroup[]>([]);
   const [activeGroupId, setActiveGroupIdState] = useState<string | null>(LOCAL_GROUP_ID);
   const [activeMember, setActiveMember] = useState<MealGroupMember | null>(null);
@@ -26,24 +29,25 @@ export function GroupProvider({ children }: { children: ReactNode }) {
 
   const load = useCallback(async () => {
     await seedOfflineData();
+    if (user) await execute('UPDATE members SET user_id = ? WHERE id = ? AND (user_id IS NULL OR user_id = ?)', [user.id, LOCAL_MEMBER_ID, 'local-owner']);
     const localGroups = await GroupRepository.getAll();
     const selected = localGroups.find((group) => group.id === activeGroupId) || localGroups[0] || null;
     setGroups(localGroups);
     setActiveGroupIdState(selected?.id || null);
     setActiveMember(selected ? await MemberRepository.getById(LOCAL_MEMBER_ID) : null);
     setIsLoading(false);
-  }, [activeGroupId]);
+  }, [activeGroupId, user]);
 
   useEffect(() => { load(); }, [load]);
 
   const activeGroup = groups.find((group) => group.id === activeGroupId) || null;
   const permissionContext = useMemo<PermissionContext | null>(() => activeMember && activeGroupId ? ({
     groupId: activeGroupId,
-    userId: 'local-owner',
+    userId: user?.id || '',
     role: activeMember.role,
     status: activeMember.status,
     permissions: activeMember.permissions || {},
-  }) : null, [activeGroupId, activeMember]);
+  }) : null, [activeGroupId, activeMember, user]);
 
   return (
     <GroupContext.Provider value={{

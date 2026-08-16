@@ -6,6 +6,8 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
+    "server": "tsx server/index.ts",
+    "server:check": "tsc -p server/tsconfig.json --noEmit",
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "build:apk": "eas build --platform android --profile preview",

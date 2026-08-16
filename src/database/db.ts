@@ -13,6 +13,12 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   if (!dbInstance) {
     dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
     await dbInstance.execAsync(SCHEMA_SQL);
+    const version = await dbInstance.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+    if ((version?.user_version ?? 0) < 2) {
+      await dbInstance.withTransactionAsync(async () => {
+        await dbInstance!.execAsync('PRAGMA user_version = 2');
+      });
+    }
   }
   return dbInstance;
 }

@@ -253,4 +253,30 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE INDEX IF NOT EXISTS idx_audit_group ON audit_logs(group_id);
 CREATE INDEX IF NOT EXISTS idx_audit_expense ON audit_logs(expense_id);
 
+-- Offline synchronization state. App records remain authoritative while offline.
+CREATE TABLE IF NOT EXISTS sync_meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sync_shadow (
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 0,
+  fingerprint TEXT NOT NULL,
+  PRIMARY KEY (entity_type, entity_id)
+);
+CREATE TABLE IF NOT EXISTS sync_outbox (
+  operation_id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  base_version INTEGER NOT NULL DEFAULT 0,
+  payload TEXT NOT NULL,
+  deleted INTEGER NOT NULL DEFAULT 0,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sync_outbox_created ON sync_outbox(created_at);
+
 `;
