@@ -41,5 +41,8 @@
     "eas-cli": "^16.28.0",
     "expo-doctor": "^1.17.11",
     "typescript": "^6.0.3"
+  },
+  "pnpm": {
+    "ignoredBuiltDependencies": ["dtrace-provider"]
   }
 }
