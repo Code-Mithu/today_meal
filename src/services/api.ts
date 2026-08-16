@@ -67,15 +67,30 @@ async function parseResponse<T>(response: Response): Promise<T> {
   }
 }
 
+let authenticationExpiredHandler: (() => void) | null = null;
+
+export function setAuthenticationExpiredHandler(handler: (() => void) | null) {
+  authenticationExpiredHandler = handler;
+  return () => {
+    if (authenticationExpiredHandler === handler) authenticationExpiredHandler = null;
+  };
+}
+
 async function request<T>(path: string, init: RequestInit, allowRefresh: boolean): Promise<T> {
-  const access = await SecureStore.getItemAsync(ACCESS_KEY);
+  let access: string | null = null;
+  try {
+    access = await SecureStore.getItemAsync(ACCESS_KEY);
+  } catch {
+    throw new ApiError('The secure session could not be read on this device. Please sign in again.', 0, 'authentication');
+  }
   const response = await fetchApi(path, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(access ? { Authorization: `Bearer ${access}` } : {}), ...init.headers },
   });
-  if (response.status === 401 && allowRefresh) {
+  if (response.status === 401 && allowRefresh && access) {
     if (await refreshAccessToken()) return request<T>(path, init, false);
     await clearTokens();
+    authenticationExpiredHandler?.();
   }
   if (!response.ok) throw await errorFromResponse(response);
   return parseResponse<T>(response);

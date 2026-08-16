@@ -97,6 +97,33 @@ describe('mobile API authentication', () => {
     expect(store.get(REFRESH_KEY)).toBe('refresh-token');
   });
 
+  it('does not attempt token refresh when the device has no session', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'Authentication credentials were not provided.' }), { status: 401 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const { apiFetch } = await import('./api');
+
+    await expect(apiFetch('/api/auth/me')).rejects.toMatchObject({ status: 401, kind: 'authentication' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('notifies the app when an authenticated session can no longer refresh', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: 'expired' }), { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: 'invalid refresh' }), { status: 401 })));
+    const { apiFetch, saveTokens, setAuthenticationExpiredHandler } = await import('./api');
+    const expired = vi.fn();
+    const unsubscribe = setAuthenticationExpiredHandler(expired);
+    await saveTokens('old-access', 'invalid-refresh');
+
+    await expect(apiFetch('/api/auth/me')).rejects.toMatchObject({ status: 401 });
+
+    expect(expired).toHaveBeenCalledOnce();
+    expect(store.size).toBe(0);
+    unsubscribe();
+  });
+
   it('rejects malformed login tokens instead of persisting them', async () => {
     const { ApiError, saveTokens } = await import('./api');
     await expect(saveTokens('', 'refresh-token')).rejects.toBeInstanceOf(ApiError);

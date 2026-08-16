@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { ApiError, apiFetch, clearTokens, hasStoredSession, revokeSession, saveTokens } from '@/services/api';
+import { ApiError, apiFetch, clearTokens, hasStoredSession, revokeSession, saveTokens, setAuthenticationExpiredHandler } from '@/services/api';
 
 type User = { id: string; name: string; email: string };
 type AuthContextValue = {
@@ -31,6 +31,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isOfflineSession, setOfflineSession] = useState(false);
   const authOperation = useRef(0);
+
+  useEffect(() => setAuthenticationExpiredHandler(() => {
+    setUser(null);
+    setOfflineSession(false);
+    void SecureStore.deleteItemAsync(USER_KEY).catch(() => undefined);
+  }), []);
 
   useEffect(() => {
     const operation = ++authOperation.current;
