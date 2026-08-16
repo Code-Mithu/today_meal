@@ -73,8 +73,9 @@ async function request<T>(path: string, init: RequestInit, allowRefresh: boolean
     ...init,
     headers: { 'Content-Type': 'application/json', ...(access ? { Authorization: `Bearer ${access}` } : {}), ...init.headers },
   });
-  if (response.status === 401 && allowRefresh && await refreshAccessToken()) {
-    return request<T>(path, init, false);
+  if (response.status === 401 && allowRefresh) {
+    if (await refreshAccessToken()) return request<T>(path, init, false);
+    await clearTokens();
   }
   if (!response.ok) throw await errorFromResponse(response);
   return parseResponse<T>(response);
@@ -84,15 +85,52 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, allowRef
   return request<T>(path, init, allowRefresh);
 }
 
-export async function saveTokens(access: string, refresh: string) {
-  await Promise.all([SecureStore.setItemAsync(ACCESS_KEY, access), SecureStore.setItemAsync(REFRESH_KEY, refresh)]);
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
+let credentialVersion = 0;
 let refreshPromise: Promise<boolean> | null = null;
 
-async function performTokenRefresh() {
-  const refresh = await SecureStore.getItemAsync(REFRESH_KEY);
-  if (!refresh) return false;
+export async function saveTokens(access: string, refresh: string) {
+  if (!isNonEmptyString(access) || !isNonEmptyString(refresh)) {
+    throw new ApiError('The server returned an invalid session. Please sign in again.', 0, 'response');
+  }
+
+  const versionAtStart = ++credentialVersion;
+  try {
+    await Promise.all([
+      SecureStore.setItemAsync(ACCESS_KEY, access),
+      SecureStore.setItemAsync(REFRESH_KEY, refresh),
+    ]);
+    if (credentialVersion !== versionAtStart) {
+      await clearTokens();
+      throw new ApiError('The sign-in attempt was cancelled.', 0, 'authentication');
+    }
+  } catch (error) {
+    await clearTokens();
+    if (error instanceof ApiError) throw error;
+    throw new ApiError('The secure session could not be saved on this device.', 0, 'response');
+  }
+}
+
+export async function hasStoredSession() {
+  try {
+    return isNonEmptyString(await SecureStore.getItemAsync(REFRESH_KEY));
+  } catch {
+    return false;
+  }
+}
+
+async function performTokenRefresh(versionAtStart: number) {
+  let refresh: string | null;
+  try {
+    refresh = await SecureStore.getItemAsync(REFRESH_KEY);
+  } catch {
+    await clearTokens();
+    return false;
+  }
+  if (!isNonEmptyString(refresh)) return false;
 
   const response = await fetchApi('/api/auth/refresh', {
     method: 'POST',
@@ -104,23 +142,56 @@ async function performTokenRefresh() {
     return false;
   }
 
-  const tokens = await parseResponse<{ access: string; refresh?: string }>(response);
-  if (!tokens.access) {
+  const tokens = await parseResponse<{ access?: unknown; refresh?: unknown }>(response);
+  if (!isNonEmptyString(tokens.access)) {
     await clearTokens();
     throw new ApiError('The server returned an invalid session. Please sign in again.', response.status, 'response');
   }
-  await SecureStore.setItemAsync(ACCESS_KEY, tokens.access);
-  if (tokens.refresh) await SecureStore.setItemAsync(REFRESH_KEY, tokens.refresh);
+
+  // A logout or newer login happened while this request was in flight.
+  if (credentialVersion !== versionAtStart) return false;
+
+  try {
+    await SecureStore.setItemAsync(ACCESS_KEY, tokens.access);
+    if (isNonEmptyString(tokens.refresh)) await SecureStore.setItemAsync(REFRESH_KEY, tokens.refresh);
+  } catch {
+    await clearTokens();
+    return false;
+  }
   return true;
 }
 
 export async function refreshAccessToken() {
   if (!refreshPromise) {
-    refreshPromise = performTokenRefresh().finally(() => { refreshPromise = null; });
+    const versionAtStart = credentialVersion;
+    refreshPromise = performTokenRefresh(versionAtStart).finally(() => { refreshPromise = null; });
   }
   return refreshPromise;
 }
 
 export async function clearTokens() {
-  await Promise.all([SecureStore.deleteItemAsync(ACCESS_KEY), SecureStore.deleteItemAsync(REFRESH_KEY)]);
+  credentialVersion += 1;
+  await Promise.allSettled([
+    SecureStore.deleteItemAsync(ACCESS_KEY),
+    SecureStore.deleteItemAsync(REFRESH_KEY),
+  ]);
+}
+
+export async function revokeSession() {
+  credentialVersion += 1;
+  let refresh: string | null = null;
+  try {
+    refresh = await SecureStore.getItemAsync(REFRESH_KEY);
+    if (isNonEmptyString(refresh)) {
+      await fetchApi('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh }),
+      });
+    }
+  } catch {
+    // Local logout must succeed even when the device or server is offline.
+  } finally {
+    await clearTokens();
+  }
 }

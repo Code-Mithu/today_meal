@@ -1,6 +1,6 @@
 {
   "name": "today-meal-offline",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
@@ -9,6 +9,7 @@
     "server": "python server/manage.py runserver 0.0.0.0:8000",
     "server:check": "python server/manage.py check",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "doctor": "expo-doctor",
     "build:apk": "npx --yes eas-cli@latest build --platform android --profile preview",
     "build:apk:local": "npx --yes eas-cli@latest build --local --platform android --profile preview"
@@ -40,7 +41,8 @@
     "babel-preset-expo": "^57.0.0",
     "eas-cli": "^22.0.0",
     "expo-doctor": "^1.17.11",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   },
   "pnpm": {
     "onlyBuiltDependencies": []

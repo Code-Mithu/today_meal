@@ -83,6 +83,24 @@ class SyncApiTests(APITestCase):
         response = self.client.post(reverse("token-refresh"), {"refresh": "not-a-token"}, format="json")
         self.assertEqual(response.status_code, 401)
 
+    def test_refresh_rotation_and_logout_revoke_old_tokens(self):
+        signup = self.signup()
+        self.client.credentials()
+        rotated = self.client.post(reverse("token-refresh"), {"refresh": signup["refresh"]}, format="json")
+        self.assertEqual(rotated.status_code, 200)
+        self.assertIn("refresh", rotated.data)
+
+        reused = self.client.post(reverse("token-refresh"), {"refresh": signup["refresh"]}, format="json")
+        self.assertEqual(reused.status_code, 401)
+
+        logout = self.client.post(reverse("logout"), {"refresh": rotated.data["refresh"]}, format="json")
+        self.assertEqual(logout.status_code, 204)
+        after_logout = self.client.post(reverse("token-refresh"), {"refresh": rotated.data["refresh"]}, format="json")
+        self.assertEqual(after_logout.status_code, 401)
+
+        repeated_logout = self.client.post(reverse("logout"), {"refresh": rotated.data["refresh"]}, format="json")
+        self.assertEqual(repeated_logout.status_code, 204)
+
     def test_sync_is_idempotent_audited_and_pullable(self):
         self.signup()
         household = self.household()

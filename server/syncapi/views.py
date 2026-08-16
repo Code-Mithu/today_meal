@@ -64,6 +64,19 @@ def me(request):
     return Response({"user": user_payload(request.user)})
 
 
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def logout(request):
+    refresh_value = str(request.data.get("refresh", ""))
+    if refresh_value:
+        try:
+            RefreshToken(refresh_value).blacklist()
+        except Exception:
+            # Logout is idempotent: an invalid, expired, or already-revoked token is signed out.
+            pass
+    return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 @api_view(["GET", "POST"])
 def households(request):
     if request.method == "GET":

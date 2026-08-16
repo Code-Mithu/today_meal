@@ -2,7 +2,7 @@
   "expo": {
     "name": "Today Meal Offline",
     "slug": "today-meal-offline",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -20,7 +20,7 @@
         "backgroundColor": "#F8FAF8"
       },
       "package": "com.todaymeal.app",
-      "versionCode": 2
+      "versionCode": 3
     },
     "plugins": [
       "expo-sqlite"
