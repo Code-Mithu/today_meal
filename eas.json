@@ -8,14 +8,16 @@
       "distribution": "internal",
       "environment": "preview",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://base44-mobile-app-6.vercel.app"
+        "EXPO_PUBLIC_API_URL": "https://base44-mobile-app-6.vercel.app",
+        "EAS_BUILD_PNPM_VERSION": "10.34.3"
       },
       "android": { "buildType": "apk" }
     },
     "production": {
       "environment": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://base44-mobile-app-6.vercel.app"
+        "EXPO_PUBLIC_API_URL": "https://base44-mobile-app-6.vercel.app",
+        "EAS_BUILD_PNPM_VERSION": "10.34.3"
       },
       "android": { "buildType": "app-bundle" }
     }

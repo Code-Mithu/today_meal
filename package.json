@@ -43,8 +43,5 @@
     "expo-doctor": "^1.17.11",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": []
   }
 }
