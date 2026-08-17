@@ -37,6 +37,10 @@ export function useExpenses(month?: string) {
       notes: data.notes, other_expenses: data.other_expenses || [],
       other_expense_title: data.other_expense_title, other_expense_amount: otherAmount,
       total_daily_expense: total, cost_per_meal: calculateCostPerMeal(total, meals),
+      approval_status: settings?.expense_approval_required ? 'pending' : 'approved',
+      currency: data.currency || activeGroup?.currency || 'BDT',
+      exchange_rate: data.exchange_rate || 1,
+      normalized_amount: data.normalized_amount ?? total * (data.exchange_rate || 1),
       version: 1, client_operation_id: generateClientOperationId(), created_date: now, updated_date: now,
     } as Expense;
     await ExpenseRepository.upsert(expense);

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -153,6 +154,49 @@ class SyncApiTests(APITestCase):
         self.assertEqual(bad_operations.status_code, 200)
         self.assertTrue(all(result["accepted"] is False for result in bad_operations.data["results"]))
         self.assertEqual(SyncEntity.objects.count(), 0)
+
+    def test_expense_approval_is_idempotent(self):
+        self.signup()
+        household = self.household()
+        now = datetime.now(timezone.utc)
+        self.operation(household["id"], "expense-create", 25, now)
+        headers = {"HTTP_IDEMPOTENCY_KEY": "approve-once"}
+        first = self.client.post(
+            reverse("approve-expense", kwargs={"expense_id": "expense-1"}),
+            {"householdId": household["id"]}, format="json", **headers,
+        )
+        replay = self.client.post(
+            reverse("approve-expense", kwargs={"expense_id": "expense-1"}),
+            {"householdId": household["id"]}, format="json", **headers,
+        )
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(replay.status_code, 200)
+        self.assertEqual(first.data, replay.data)
+        self.assertEqual(SyncEntity.objects.get(entity_type="expenses").payload["approval_status"], "approved")
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_invitation_and_report_email_are_idempotent(self):
+        self.signup()
+        household = self.household()
+        invite = self.client.post(
+            reverse("invite-member"),
+            {"householdId": household["id"], "email": "guest@example.com", "role": "member"},
+            format="json", HTTP_IDEMPOTENCY_KEY="invite-once",
+        )
+        replay = self.client.post(
+            reverse("invite-member"),
+            {"householdId": household["id"], "email": "guest@example.com", "role": "member"},
+            format="json", HTTP_IDEMPOTENCY_KEY="invite-once",
+        )
+        self.assertEqual(invite.status_code, 201)
+        self.assertEqual(replay.status_code, 200)
+        self.assertEqual(invite.data, replay.data)
+        report = self.client.post(
+            reverse("email-report"),
+            {"householdId": household["id"], "email": "owner@example.com", "currency": "BDT"},
+            format="json", HTTP_IDEMPOTENCY_KEY="report-once",
+        )
+        self.assertEqual(report.status_code, 201)
 
     def test_household_isolation(self):
         self.signup()

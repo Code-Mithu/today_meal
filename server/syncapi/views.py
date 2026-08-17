@@ -148,6 +148,12 @@ def sync_push(request):
             entity_type = str(operation.get("entityType", ""))
             entity_id = str(operation.get("entityId", ""))[:128]
             payload = operation.get("payload") if isinstance(operation.get("payload"), dict) else {}
+            if entity_type == "expenses" and membership.role == "member":
+                policy = SyncEntity.objects.filter(
+                    household_id=household_id, entity_type="group_settings", deleted_at__isnull=True
+                ).first()
+                if policy and policy.payload.get("expense_approval_required"):
+                    payload = {**payload, "approval_status": "pending", "reviewed_by": None, "reviewed_at": None}
             if not operation_id or not entity_id or entity_type not in ENTITY_TYPES:
                 results.append({"operationId": operation_id, "accepted": False, "error": "Invalid operation"})
                 continue
@@ -305,13 +311,19 @@ def receipt_detail(request, expense_id):
         return Response({"message": "A JPEG, PNG, or WebP receipt is required."}, status=400)
     if upload.size > settings.FILE_UPLOAD_MAX_MEMORY_SIZE:
         return Response({"message": "Receipt exceeds the upload limit."}, status=413)
-    receipt, _ = Receipt.objects.get_or_create(
-        household=membership.household, expense_id=expense_id,
-        defaults={"image": upload, "content_type": upload.content_type, "size": upload.size, "uploaded_by": request.user},
-    )
-    if receipt.image != upload and not _:
+    receipt = Receipt.objects.filter(household=membership.household, expense_id=expense_id).first()
+    if receipt:
         receipt.image.delete(save=False)
-        receipt.image = upload; receipt.content_type = upload.content_type; receipt.size = upload.size; receipt.uploaded_by = request.user; receipt.save()
+        receipt.image = upload
+        receipt.content_type = upload.content_type
+        receipt.size = upload.size
+        receipt.uploaded_by = request.user
+        receipt.save()
+    else:
+        receipt = Receipt.objects.create(
+            household=membership.household, expense_id=expense_id, image=upload,
+            content_type=upload.content_type, size=upload.size, uploaded_by=request.user,
+        )
     return Response({"receiptId": str(receipt.id), "expenseId": expense_id}, status=201)
 
 

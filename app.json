@@ -25,6 +25,13 @@
     "plugins": [
       "expo-sqlite",
       [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Today Meal to capture expense receipts.",
+          "photosPermission": "Allow Today Meal to attach expense receipts."
+        }
+      ],
+      [
         "expo-secure-store",
         {
           "configureAndroidBackup": true
