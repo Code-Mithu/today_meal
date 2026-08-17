@@ -1,6 +1,12 @@
 import * as SecureStore from 'expo-secure-store';
 
+// CHANGE HERE: the production backend origin is not set in this file.
+// HOW: set EXPO_PUBLIC_API_URL in `eas.json` (build.preview.env / build.production.env)
+// for APK builds, or in `.env` for local Expo development.
+// WHY: the value is inlined at build time, so an APK built with the wrong origin can
+// never reach the backend; release builds additionally require HTTPS (enforced below).
 const CONFIGURED_API_URL = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, '');
+// Android emulator loopback to a Django dev server on the host machine.
 const DEVELOPMENT_API_URL = 'http://10.0.2.2:8000';
 const REQUEST_TIMEOUT_MS = 15_000;
 const ACCESS_KEY = 'today-meal.access-token';

@@ -1,4 +1,5 @@
 import secrets
+import uuid
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
@@ -25,7 +26,14 @@ def token_payload(user):
 
 
 def membership_for(user, household_id):
-    return Membership.objects.select_related("household").filter(user=user, household_id=household_id).first()
+    # Household primary keys are UUIDs. Passing an arbitrary client string straight
+    # into the ORM raises a database ValidationError (HTTP 500), so unparseable ids
+    # are rejected here and surface as a normal "access denied" response instead.
+    try:
+        household_uuid = uuid.UUID(str(household_id))
+    except (TypeError, ValueError, AttributeError):
+        return None
+    return Membership.objects.select_related("household").filter(user=user, household_id=household_uuid).first()
 
 
 @api_view(["GET"])
@@ -108,16 +116,21 @@ def normalized_timestamp(payload):
 
 @api_view(["POST"])
 def sync_push(request):
-    household_id = request.data.get("householdId")
-    membership = membership_for(request.user, household_id)
+    membership = membership_for(request.user, request.data.get("householdId"))
     if not membership or membership.role not in WRITE_ROLES:
         return Response({"message": "Household access denied."}, status=403)
+    # Always use the verified membership's household id so every write below is
+    # scoped to a household this user actually belongs to.
+    household_id = membership.household_id
     operations = request.data.get("operations", [])
     if not isinstance(operations, list) or len(operations) > 250:
         return Response({"message": "Operations must be a list of at most 250 items."}, status=400)
     results = []
     with transaction.atomic():
         for operation in operations:
+            if not isinstance(operation, dict):
+                results.append({"operationId": "", "accepted": False, "error": "Invalid operation"})
+                continue
             operation_id = str(operation.get("operationId", ""))[:128]
             entity_type = str(operation.get("entityType", ""))
             entity_id = str(operation.get("entityId", ""))[:128]
@@ -153,14 +166,14 @@ def sync_push(request):
 
 @api_view(["GET"])
 def sync_pull(request):
-    household_id = request.query_params.get("householdId")
-    if not membership_for(request.user, household_id):
+    membership = membership_for(request.user, request.query_params.get("householdId"))
+    if not membership:
         return Response({"message": "Household access denied."}, status=403)
     try:
         cursor = max(0, int(request.query_params.get("cursor", "0")))
-    except ValueError:
+    except (TypeError, ValueError):
         return Response({"message": "Invalid cursor."}, status=400)
-    rows = list(Change.objects.filter(household_id=household_id, id__gt=cursor).order_by("id")[:251])
+    rows = list(Change.objects.filter(household_id=membership.household_id, id__gt=cursor).order_by("id")[:251])
     has_more = len(rows) > 250
     rows = rows[:250]
     changes = [{"sequence": str(row.id), "entity_type": row.entity_type, "entity_id": row.entity_id, "payload": row.payload, "version": row.version, "deleted_at": row.deleted_at.isoformat() if row.deleted_at else None} for row in rows]

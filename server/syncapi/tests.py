@@ -129,6 +129,31 @@ class SyncApiTests(APITestCase):
         entity = SyncEntity.objects.get()
         self.assertEqual(entity.payload["amount"], 20)
 
+    def test_malformed_household_and_operation_input_is_rejected_without_server_error(self):
+        self.signup()
+        household = self.household()
+
+        for household_id in ("not-a-uuid", "", {"nested": True}, 12):
+            push = self.client.post(reverse("sync-push"), {"householdId": household_id, "operations": []}, format="json")
+            self.assertEqual(push.status_code, 403)
+            pull = self.client.get(reverse("sync-pull"), {"householdId": household_id})
+            self.assertEqual(pull.status_code, 403)
+
+        missing = self.client.get(reverse("sync-pull"))
+        self.assertEqual(missing.status_code, 403)
+
+        bad_cursor = self.client.get(reverse("sync-pull"), {"householdId": household["id"], "cursor": "abc"})
+        self.assertEqual(bad_cursor.status_code, 400)
+
+        bad_operations = self.client.post(
+            reverse("sync-push"),
+            {"householdId": household["id"], "operations": ["oops", None, 5]},
+            format="json",
+        )
+        self.assertEqual(bad_operations.status_code, 200)
+        self.assertTrue(all(result["accepted"] is False for result in bad_operations.data["results"]))
+        self.assertEqual(SyncEntity.objects.count(), 0)
+
     def test_household_isolation(self):
         self.signup()
         household = self.household()
