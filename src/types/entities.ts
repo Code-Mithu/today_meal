@@ -87,6 +87,14 @@ export interface Expense {
   other_expense_amount: number;
   total_daily_expense: number;
   cost_per_meal: number;
+  approval_status?: 'pending' | 'approved' | 'rejected';
+  reviewed_by?: string;
+  reviewed_at?: string;
+  rejection_reason?: string;
+  receipt_uri?: string;
+  currency?: string;
+  exchange_rate?: number;
+  normalized_amount?: number;
   created_by_name?: string;
   updated_by_id?: string;
   updated_by_name?: string;
@@ -238,6 +246,13 @@ export interface AuditLog {
   new_value?: string;
   snapshot?: Record<string, any>;
 }
+
+export interface Budget { id: string; group_id: string; name: string; category?: string; period: string; amount: number; currency: string; start_date?: string; end_date?: string; active: boolean; version: number; created_date: string; updated_date: string; }
+export interface ExchangeRate { id: string; group_id: string; base_currency: string; quote_currency: string; rate: number; rate_date: string; version: number; created_date: string; updated_date: string; }
+export interface RecurringRule { id: string; group_id: string; name: string; frequency: 'weekly' | 'monthly' | 'yearly'; next_run: string; active: boolean; expense_template: Record<string, unknown>; version: number; created_date: string; updated_date: string; }
+export interface GroceryList { id: string; group_id: string; name: string; status: 'active' | 'completed'; linked_expense_id?: string; version: number; created_date: string; updated_date: string; }
+export interface GroceryItem { id: string; group_id: string; list_id: string; name: string; quantity: number; unit: string; estimated_cost: number; actual_cost?: number; assignee?: string; checked: boolean; menu_id?: string; version: number; created_date: string; updated_date: string; }
+export interface Invitation { id: string; group_id: string; email: string; role: string; status: 'pending' | 'accepted' | 'revoked' | 'failed'; expires_at?: string; created_date: string; updated_date: string; }
 
 export interface GroupSettings {
   id: string;

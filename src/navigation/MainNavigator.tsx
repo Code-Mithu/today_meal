@@ -14,6 +14,7 @@ import GroupSettingsScreen from '@/screens/GroupSettingsScreen';
 import CategoriesScreen from '@/screens/CategoriesScreen';
 import VendorsScreen from '@/screens/VendorsScreen';
 import AuditLogScreen from '@/screens/AuditLogScreen';
+import PlanningScreen from '@/screens/PlanningScreen';
 import { COLORS } from '@/utils/constants';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -34,6 +35,7 @@ export default function MainNavigator() {
       <Stack.Screen name="Categories" component={CategoriesScreen} />
       <Stack.Screen name="Vendors" component={VendorsScreen} />
       <Stack.Screen name="AuditLog" component={AuditLogScreen} />
+      <Stack.Screen name="Planning" component={PlanningScreen} />
     </Stack.Navigator>
   );
 }

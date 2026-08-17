@@ -106,6 +106,24 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}, allowRef
   return request<T>(path, init, allowRefresh);
 }
 
+export async function apiMultipart<T>(path: string, form: FormData, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
+  const access = await SecureStore.getItemAsync(ACCESS_KEY);
+  const response = await fetchApi(path, {
+    method,
+    body: form,
+    headers: access ? { Authorization: `Bearer ${access}` } : {},
+  });
+  if (!response.ok) throw await errorFromResponse(response);
+  return parseResponse<T>(response);
+}
+
+export async function getRealtimeUrl(householdId: string) {
+  const access = await SecureStore.getItemAsync(ACCESS_KEY);
+  if (!access) throw new ApiError('Sign in to connect realtime updates.', 401, 'authentication');
+  const origin = getApiUrl().replace(/^http/, 'ws');
+  return `${origin}/ws/households/${encodeURIComponent(householdId)}?token=${encodeURIComponent(access)}`;
+}
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }

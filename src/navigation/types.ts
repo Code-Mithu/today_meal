@@ -22,6 +22,7 @@ export type MainStackParamList = {
   Categories: undefined;
   Vendors: undefined;
   AuditLog: undefined;
+  Planning: undefined;
 };
 
 export type RootStackParamList = MainStackParamList;

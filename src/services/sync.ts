@@ -1,7 +1,7 @@
 import { execute, queryAll, queryFirst, runInTransaction } from '@/database/db';
 import { apiFetch } from './api';
 
-const TABLES = ['groups', 'members', 'expenses', 'contributions', 'daily_meals', 'daily_menus', 'categories', 'vendors', 'group_settings'] as const;
+const TABLES = ['groups', 'members', 'expenses', 'contributions', 'daily_meals', 'daily_menus', 'categories', 'vendors', 'group_settings', 'budgets', 'exchange_rates', 'recurring_rules', 'grocery_lists', 'grocery_items', 'invitations', 'report_deliveries'] as const;
 type TableName = typeof TABLES[number];
 type OutboxRow = { operation_id: string; entity_type: TableName; entity_id: string; base_version: number; payload: string; deleted: number; attempts: number };
 type Change = { sequence: string; entity_type: TableName | 'audit_logs'; entity_id: string; payload: Record<string, unknown>; version: number; deleted_at: string | null };
@@ -28,8 +28,13 @@ async function stageLocalChanges(householdId: string, localGroupId: string) {
       const entityId = String(row.id); const print = fingerprint(row);
       const shadow = await queryFirst<{ version: number; fingerprint: string }>('SELECT version, fingerprint FROM sync_shadow WHERE entity_type = ? AND entity_id = ?', [table, entityId]);
       if (shadow?.fingerprint === print) continue;
-      const pending = await queryFirst('SELECT operation_id FROM sync_outbox WHERE entity_type = ? AND entity_id = ?', [table, entityId]);
-      if (!pending) await execute('INSERT INTO sync_outbox (operation_id, household_id, entity_type, entity_id, base_version, payload, deleted, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [id(), householdId, table, entityId, shadow?.version ?? 0, JSON.stringify(row), row.deleted_at ? 1 : 0, new Date().toISOString()]);
+      const pending = await queryFirst<{ operation_id: string; payload: string }>('SELECT operation_id, payload FROM sync_outbox WHERE entity_type = ? AND entity_id = ?', [table, entityId]);
+      if (!pending) {
+        await execute('INSERT INTO sync_outbox (operation_id, household_id, entity_type, entity_id, base_version, payload, deleted, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [id(), householdId, table, entityId, shadow?.version ?? 0, JSON.stringify(row), row.deleted_at ? 1 : 0, new Date().toISOString()]);
+      } else if (pending.payload !== JSON.stringify(row)) {
+        // Keep the stable idempotency key while replacing the queued snapshot with the latest local edit.
+        await execute('UPDATE sync_outbox SET payload = ?, deleted = ?, attempts = 0, last_error = NULL WHERE operation_id = ?', [JSON.stringify(row), row.deleted_at ? 1 : 0, pending.operation_id]);
+      }
     }
   }
 }
@@ -82,3 +87,4 @@ export async function synchronize(localGroupId: string, householdName: string) {
 }
 
 export async function getSyncSnapshot() { return { pending: (await queryFirst<{ count: number }>('SELECT COUNT(*) as count FROM sync_outbox'))?.count ?? 0, lastSyncAt: await meta('last_sync_at') }; }
+export async function getCloudHouseholdId() { return meta('cloud_household_id'); }

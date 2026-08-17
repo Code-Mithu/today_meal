@@ -5,9 +5,10 @@ import type { Expense } from '@/types';
 import { generateClientOperationId, generateUUID } from '@/utils/validators';
 import { calculateTotalExpense, calculateCostPerMeal, sumFoodExpenses, sumOtherExpenses } from '@/utils/calculations';
 import { getMonthString } from '@/utils/formatters';
+import { queryFirst } from '@/database/db';
 
 export function useExpenses(month?: string) {
-  const { activeGroupId } = useGroup();
+  const { activeGroupId, activeGroup } = useGroup();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -22,6 +23,7 @@ export function useExpenses(month?: string) {
   const createExpense = useCallback(async (data: Partial<Expense>) => {
     if (!activeGroupId) return { success: false, error: 'No active group' };
     const now = new Date().toISOString();
+    const settings = await queryFirst<{ expense_approval_required: number }>('SELECT expense_approval_required FROM group_settings WHERE group_id = ?', [activeGroupId]);
     const foodAmount = data.food_expense_amount ?? sumFoodExpenses(data.food_expenses || []);
     const otherAmount = data.other_expense_amount ?? sumOtherExpenses(data.other_expenses || []);
     const total = calculateTotalExpense({ ...data, food_expense_amount: foodAmount, other_expense_amount: otherAmount });

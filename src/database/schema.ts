@@ -72,6 +72,14 @@ CREATE TABLE IF NOT EXISTS expenses (
   other_expense_amount REAL DEFAULT 0,
   total_daily_expense REAL DEFAULT 0,
   cost_per_meal REAL DEFAULT 0,
+  approval_status TEXT DEFAULT 'approved',
+  reviewed_by TEXT,
+  reviewed_at TEXT,
+  rejection_reason TEXT,
+  receipt_uri TEXT,
+  currency TEXT DEFAULT 'BDT',
+  exchange_rate REAL DEFAULT 1,
+  normalized_amount REAL,
   created_by_name TEXT,
   updated_by_id TEXT,
   updated_by_name TEXT,
@@ -252,6 +260,22 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_group ON audit_logs(group_id);
 CREATE INDEX IF NOT EXISTS idx_audit_expense ON audit_logs(expense_id);
+
+-- Planning and finance extensions (all offline-first and group scoped)
+CREATE TABLE IF NOT EXISTS budgets (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, name TEXT NOT NULL, category TEXT, period TEXT NOT NULL, amount REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'BDT', start_date TEXT, end_date TEXT, active INTEGER DEFAULT 1, version INTEGER DEFAULT 1, client_operation_id TEXT, deleted_at TEXT, created_date TEXT, updated_date TEXT);
+CREATE INDEX IF NOT EXISTS idx_budgets_group_period ON budgets(group_id, period);
+CREATE TABLE IF NOT EXISTS exchange_rates (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, base_currency TEXT NOT NULL, quote_currency TEXT NOT NULL, rate REAL NOT NULL, rate_date TEXT NOT NULL, version INTEGER DEFAULT 1, client_operation_id TEXT, deleted_at TEXT, created_date TEXT, updated_date TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rates_unique ON exchange_rates(group_id, base_currency, quote_currency, rate_date);
+CREATE TABLE IF NOT EXISTS recurring_rules (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, name TEXT NOT NULL, frequency TEXT NOT NULL, next_run TEXT NOT NULL, active INTEGER DEFAULT 1, expense_template TEXT DEFAULT '{}', version INTEGER DEFAULT 1, client_operation_id TEXT, deleted_at TEXT, created_date TEXT, updated_date TEXT);
+CREATE INDEX IF NOT EXISTS idx_recurring_due ON recurring_rules(group_id, active, next_run);
+CREATE TABLE IF NOT EXISTS grocery_lists (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, name TEXT NOT NULL, status TEXT DEFAULT 'active', linked_expense_id TEXT, version INTEGER DEFAULT 1, client_operation_id TEXT, deleted_at TEXT, created_date TEXT, updated_date TEXT);
+CREATE INDEX IF NOT EXISTS idx_grocery_lists_group ON grocery_lists(group_id, status);
+CREATE TABLE IF NOT EXISTS grocery_items (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, list_id TEXT NOT NULL, name TEXT NOT NULL, quantity REAL DEFAULT 1, unit TEXT DEFAULT 'item', estimated_cost REAL DEFAULT 0, actual_cost REAL, assignee TEXT, checked INTEGER DEFAULT 0, menu_id TEXT, version INTEGER DEFAULT 1, client_operation_id TEXT, deleted_at TEXT, created_date TEXT, updated_date TEXT);
+CREATE INDEX IF NOT EXISTS idx_grocery_items_list ON grocery_items(group_id, list_id, checked);
+CREATE TABLE IF NOT EXISTS invitations (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, email TEXT NOT NULL, role TEXT DEFAULT 'member', status TEXT DEFAULT 'pending', expires_at TEXT, version INTEGER DEFAULT 1, client_operation_id TEXT, deleted_at TEXT, created_date TEXT, updated_date TEXT);
+CREATE INDEX IF NOT EXISTS idx_invitations_group ON invitations(group_id, status);
+CREATE TABLE IF NOT EXISTS report_deliveries (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, email TEXT NOT NULL, status TEXT NOT NULL, total REAL DEFAULT 0, currency TEXT, version INTEGER DEFAULT 1, client_operation_id TEXT, deleted_at TEXT, created_date TEXT, updated_date TEXT);
+CREATE INDEX IF NOT EXISTS idx_report_deliveries_group ON report_deliveries(group_id, created_date);
 
 -- Offline synchronization state. App records remain authoritative while offline.
 CREATE TABLE IF NOT EXISTS sync_meta (
