@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Modal } from 'react-native';
+import { Alert, View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGroup } from '@/context/GroupContext';
 import { SyncStatusBar } from '@/components/common/SyncStatusBar';
@@ -85,8 +85,8 @@ export default function ReportsScreen() {
         startDate, endDate,
         currency: activeGroup.currency,
       });
-    } catch (e: any) {
-      console.warn('PDF export failed:', e);
+    } catch {
+      Alert.alert('Export failed', 'The PDF report could not be created. Please try again.');
     } finally {
       setExporting(false);
     }
@@ -103,8 +103,8 @@ export default function ReportsScreen() {
         startDate, endDate,
         currency: activeGroup.currency,
       });
-    } catch (e: any) {
-      console.warn('CSV export failed:', e);
+    } catch {
+      Alert.alert('Export failed', 'The CSV report could not be created. Please try again.');
     } finally {
       setExporting(false);
     }

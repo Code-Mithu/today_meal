@@ -1,5 +1,4 @@
 from datetime import timedelta
-import hashlib
 import os
 from pathlib import Path
 from urllib.parse import parse_qsl, urlparse
@@ -8,15 +7,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
-    database_credential = os.environ.get("DATABASE_URL")
-    if database_credential:
-        # The database credential is stable and high-entropy, providing a secure
-        # deployment fallback when a dedicated signing secret is not configured.
-        SECRET_KEY = hashlib.sha256(f"today-meal:{database_credential}".encode()).hexdigest()
-    elif DEBUG:
+    if DEBUG:
+        # Development-only fallback. Production must always set DJANGO_SECRET_KEY;
+        # deriving a signing key from other credentials (such as DATABASE_URL)
+        # couples token security to credential rotation and is not allowed.
         SECRET_KEY = "development-only-change-me"
     else:
-        raise RuntimeError("DJANGO_SECRET_KEY or DATABASE_URL must be configured in production.")
+        raise RuntimeError(
+            "DJANGO_SECRET_KEY must be configured in production. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+        )
 
 ALLOWED_HOSTS = [
     value.strip()

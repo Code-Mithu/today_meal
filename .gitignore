@@ -3,7 +3,19 @@ node_modules/
 dist/
 web-build/
 *.tsbuildinfo
-.env
 .DS_Store
 .vercel
+
+# Environment files (keep the committed template)
+.env
 .env*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+server/db.sqlite3
+server/staticfiles/
+.venv/
+venv/
