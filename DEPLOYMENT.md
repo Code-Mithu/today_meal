@@ -11,7 +11,9 @@ This project is **already largely production-configured**. Verified state at the
 | `eas.json` | `preview` (APK) + `production` (AAB) profiles configured, API URL set |
 | `app.json` | package `com.todaymeal.app`, version `2.0.2`, versionCode `4` |
 | Icons | `icon.png` 1024×1024, `adaptive-icon.png` 1024×1024, `splash.png` 1242×2436 |
-| Tests | 9 Vitest (`src/services/api.test.ts`) + 8 Django (`server/syncapi/tests.py`) passing |
+| Tests | 19 Vitest (`src/services/api.test.ts`, `src/utils/calculations.test.ts`) + 18 Django (`server/syncapi/tests.py`) passing |
+| Realtime | Django Channels over ASGI (`daphne`); cursor sync stays the offline fallback. A WSGI-only host still serves the REST API but **not** WebSockets |
+| Media | Receipt images write to `DJANGO_MEDIA_ROOT` and are read back through `/api/expenses/<id>/receipt`, so the path must be a persistent volume |
 | GitHub | pushed to `Code-Mithu/today_meal` (`main` + `develop`) |
 
 So treat steps below as **verify** rather than **create**, except Step 3 (EAS login), Step 4 (build) and Step 8 (proper git remote), which still need action.
@@ -345,9 +347,21 @@ DJANGO_DEBUG=false DJANGO_SECRET_KEY=$(python3 -c "import secrets;print(secrets.
   DATABASE_URL=postgresql://u:p@h/d?sslmode=require .venv/bin/python server/manage.py check --deploy
 ```
 
-*Expect:* no TS errors; 9 Vitest passing (`Test Files 1 passed (1) / Tests 9 passed (9)`); 8 Django passing; `check --deploy` reporting only the two optional HSTS-subdomain warnings.
+*Expect:* no TS errors; 19 Vitest passing (`Test Files 2 passed (2) / Tests 19 passed (19)`); 18 Django passing; `check --deploy` reporting only the two optional HSTS-subdomain warnings.
 
 **All four must be green before Step 4.** An EAS build takes 10–20 minutes; a type error caught here saves a full build cycle.
+
+What the suites actually cover, so a gap is visible rather than assumed:
+
+| Suite | Covers |
+| --- | --- |
+| `src/services/api.test.ts` | Token save/clear, single-flight refresh, retry-once, revoked-session handling, offline logout |
+| `src/utils/calculations.test.ts` | Expense totals, cost per meal, meal-rate settlement (credits and dues net to zero), currency normalisation, rounding, category/vendor grouping |
+| `syncapi.tests.SyncApiTests` | Auth and refresh rotation, push idempotency, last-write-wins, malformed-input rejection, household isolation, approval/invite/report idempotency, recurring-occurrence guard, grocery conversion |
+| `syncapi.tests.ReceiptTests` | Upload, replace, fetch, delete, unsupported content type, cross-household denial |
+| `syncapi.tests.RealtimeTests` | Member socket receives `data.changed`; non-members, invalid tokens, and anonymous sockets are closed with `4403` |
+
+The realtime tests need an ASGI server present, so install `server/requirements.txt` (which pins `daphne`) rather than only the root `requirements.txt`.
 
 ---
 

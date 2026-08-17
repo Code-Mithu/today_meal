@@ -419,6 +419,8 @@ def email_report(request):
     if not membership:
         return Response({"message": "Admin access denied."}, status=403)
     recipient = str(request.data.get("email", "")).strip().lower()
+    if "@" not in recipient:
+        return Response({"message": "A valid recipient email is required."}, status=400)
 
     def apply():
         expenses = SyncEntity.objects.filter(household=membership.household, entity_type="expenses", deleted_at__isnull=True)
