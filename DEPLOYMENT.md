@@ -11,7 +11,7 @@ This project is **already largely production-configured**. Verified state at the
 | `eas.json` | `preview` (APK) + `production` (AAB) profiles configured, API URL set |
 | `app.json` | package `com.todaymeal.app`, version `2.0.2`, versionCode `4` |
 | Icons | `icon.png` 1024×1024, `adaptive-icon.png` 1024×1024, `splash.png` 1242×2436 |
-| Tests | 30 Vitest + 8 Django tests passing |
+| Tests | 9 Vitest (`src/services/api.test.ts`) + 8 Django (`server/syncapi/tests.py`) passing |
 | GitHub | pushed to `Code-Mithu/today_meal` (`main` + `develop`) |
 
 So treat steps below as **verify** rather than **create**, except Step 3 (EAS login), Step 4 (build) and Step 8 (proper git remote), which still need action.
@@ -345,7 +345,7 @@ DJANGO_DEBUG=false DJANGO_SECRET_KEY=$(python3 -c "import secrets;print(secrets.
   DATABASE_URL=postgresql://u:p@h/d?sslmode=require .venv/bin/python server/manage.py check --deploy
 ```
 
-*Expect:* no TS errors; 30 Vitest passing; 8 Django passing; `check --deploy` reporting only the two optional HSTS-subdomain warnings.
+*Expect:* no TS errors; 9 Vitest passing (`Test Files 1 passed (1) / Tests 9 passed (9)`); 8 Django passing; `check --deploy` reporting only the two optional HSTS-subdomain warnings.
 
 **All four must be green before Step 4.** An EAS build takes 10–20 minutes; a type error caught here saves a full build cycle.
 
